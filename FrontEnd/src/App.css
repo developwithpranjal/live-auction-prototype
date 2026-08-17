@@ -1,0 +1,12 @@
+/* App.css — component-level overrides (kept minimal since design system is in global.css) */
+
+/* Remove Vite default styles */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+}
