@@ -329,6 +329,17 @@ const AuctionDetail = () => {
     }
   };
 
+  const handleDeleteAuction = async () => {
+    if (!window.confirm("Are you sure you want to completely delete this upcoming auction? This action cannot be undone.")) return;
+    try {
+      await api.delete(`/auctions/${id}`);
+      toast.success("Auction deleted successfully!");
+      navigate("/my-auctions");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete auction");
+    }
+  };
+
   if (loading) return <div className="loading-state">Loading auction...</div>;
   if (error) return <div className="container page"><div className="error-state">{error}</div></div>;
   if (!auction) return null;
@@ -495,6 +506,19 @@ const AuctionDetail = () => {
                 style={{ width: "100%", borderColor: "var(--danger)", color: "var(--danger)" }}
               >
                 Close Auction Early
+              </button>
+            </div>
+          )}
+
+          {isSeller && auction.status === "upcoming" && (
+            <div style={{ marginTop: "1rem", textAlign: "center", padding: "15px", border: "1px dashed var(--danger)", borderRadius: "8px", background: "rgba(239, 68, 68, 0.05)" }}>
+              <p style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: "600", marginBottom: "15px" }}>You are the seller of this item. It has not started yet.</p>
+              <button 
+                onClick={handleDeleteAuction} 
+                className="btn btn-outline" 
+                style={{ width: "100%", borderColor: "var(--danger)", color: "var(--danger)" }}
+              >
+                Delete Auction
               </button>
             </div>
           )}

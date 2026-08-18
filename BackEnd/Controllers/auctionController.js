@@ -174,3 +174,32 @@ export const endAuctionEarly = async (req, res) => {
     res.status(500).json({ message: "Server error ending auction early" });
   }
 };
+
+// @desc    Delete an upcoming auction (Seller only)
+// @route   DELETE /api/auctions/:id
+// @access  Private
+export const deleteAuction = async (req, res) => {
+  try {
+    const auction = await Auction.findById(req.params.id);
+    if (!auction) {
+      return res.status(404).json({ message: "Auction not found" });
+    }
+
+    if (auction.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Only the seller can delete this auction" });
+    }
+
+    if (auction.status !== "upcoming") {
+      return res.status(400).json({ message: "Only upcoming auctions can be deleted" });
+    }
+
+    await Auction.findByIdAndDelete(req.params.id);
+    // Also clean up any bids just in case (though there shouldn't be any for upcoming)
+    await Bid.deleteMany({ auction: req.params.id });
+
+    res.status(200).json({ message: "Auction deleted successfully" });
+  } catch (error) {
+    console.error("Delete auction error:", error);
+    res.status(500).json({ message: "Server error deleting auction" });
+  }
+};

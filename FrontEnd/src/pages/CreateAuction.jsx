@@ -63,7 +63,15 @@ const CreateAuction = () => {
     }
 
     const fd = new FormData();
-    Object.entries(formData).forEach(([key, val]) => fd.append(key, val));
+    Object.entries(formData).forEach(([key, val]) => {
+      if (key === "startTime" || key === "endTime") {
+        // Convert the local datetime string from the input into an absolute UTC ISO string.
+        // This ensures the backend stores the correct absolute time regardless of its own timezone.
+        fd.append(key, new Date(val).toISOString());
+      } else {
+        fd.append(key, val);
+      }
+    });
     images.forEach((img) => fd.append("images", img));
 
     try {

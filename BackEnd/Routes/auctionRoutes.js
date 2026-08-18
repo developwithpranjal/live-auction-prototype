@@ -5,6 +5,7 @@ import {
   getAuctionById,
   getMyAuctions,
   endAuctionEarly,
+  deleteAuction,
 } from "../Controllers/auctionController.js";
 import { protect } from "../Middleware/authMiddleware.js";
 import { uploadImages } from "../Middleware/uploadMiddleware.js";
@@ -17,6 +18,7 @@ router.get("/my", protect, getMyAuctions);
 router.get("/", getAllAuctions);
 router.get("/:id", getAuctionById);
 router.put("/:id/end", protect, endAuctionEarly);
+router.delete("/:id", protect, deleteAuction);
 router.post("/", protect, uploadImages, createAuction);
 
 export default router;
