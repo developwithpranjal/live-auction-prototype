@@ -62,6 +62,21 @@ const auctionSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
+    deliveryDetails: {
+      address: String,
+      city: String,
+      pincode: String,
+      phone: String,
+    },
+    deliveryStatus: {
+      type: String,
+      enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'],
+      default: 'processing',
+    },
   },
   { timestamps: true }
 );

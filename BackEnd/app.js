@@ -4,13 +4,16 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./Routes/authRoutes.js";
 import auctionRoutes from "./Routes/auctionRoutes.js";
 import bidRoutes from "./Routes/bidRoutes.js";
+import walletRoutes from "./Routes/walletRoutes.js";
+import checkoutRoutes from "./Routes/checkoutRoutes.js";
+import trackingRoutes from "./Routes/trackingRoutes.js";
 
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL,
     credentials: true,
   })
 );
@@ -22,6 +25,9 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/bids", bidRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/checkout", checkoutRoutes);
+app.use("/api/tracking", trackingRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {

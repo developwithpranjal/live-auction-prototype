@@ -94,26 +94,8 @@ const Signup = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">I want to...</label>
-            <div className="auth-role-select">
-              <button
-                id="role-buyer-btn"
-                type="button"
-                className={`role-btn ${formData.role === "buyer" ? "active" : ""}`}
-                onClick={() => setFormData((p) => ({ ...p, role: "buyer" }))}
-              >
-                🛒 Buy Items
-              </button>
-              <button
-                id="role-seller-btn"
-                type="button"
-                className={`role-btn ${formData.role === "seller" ? "active" : ""}`}
-                onClick={() => setFormData((p) => ({ ...p, role: "seller" }))}
-              >
-                🏷️ Sell Items
-              </button>
-            </div>
+          <div style={{ display: "none" }}>
+            <input type="hidden" name="role" value="buyer" />
           </div>
 
           <button

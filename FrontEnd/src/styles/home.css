@@ -9,14 +9,14 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 900px 400px at 50% 0%, rgba(108, 99, 255, 0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse 900px 400px at 50% 0%, rgba(165, 214, 167, 0.1) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .home-hero-eyebrow {
   display: inline-block;
   background: var(--accent-light);
-  border: 1px solid rgba(108, 99, 255, 0.3);
+  border: 1px solid rgba(165, 214, 167, 0.3);
   color: var(--accent);
   border-radius: 999px;
   padding: 6px 16px;
@@ -36,10 +36,7 @@
 }
 
 .home-hero-title span {
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--accent);
 }
 
 .home-hero-sub {

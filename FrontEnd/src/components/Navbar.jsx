@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import Wallet from "./Wallet.jsx";
 import "../styles/navbar.css";
 
 const Navbar = () => {
@@ -56,10 +57,17 @@ const Navbar = () => {
         <div className="navbar-user">
           {user ? (
             <>
-              <div className="navbar-avatar">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <span className="navbar-username">{user.name}</span>
+              <Wallet />
+              <Link to="/profile" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }} className="profile-link">
+                <div className="navbar-avatar" style={{ cursor: "pointer", transition: "transform 0.2s", overflow: "hidden" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>
+                  {user.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    user.name.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <span className="navbar-username" style={{ cursor: "pointer" }}>{user.name}</span>
+              </Link>
               <button
                 id="navbar-logout-btn"
                 onClick={handleLogout}

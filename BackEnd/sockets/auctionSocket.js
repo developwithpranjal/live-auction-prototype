@@ -76,11 +76,29 @@ export const setupAuctionSocket = (io) => {
           return;
         }
 
+        // Prevent seller from bidding on their own item
+        if (auction.seller.toString() === userId.toString()) {
+          socket.emit("bid_error", {
+            message: "Sellers cannot bid on their own auctions",
+          });
+          return;
+        }
+
         // ── Step 2: Validate bid amount ────────────────────────────────────
         const minBid = auction.currentPrice + auction.bidIncrement;
         if (newBid < minBid) {
           socket.emit("bid_error", {
             message: `Bid must be at least ₹${minBid} (current ₹${auction.currentPrice} + increment ₹${auction.bidIncrement})`,
+          });
+          return;
+        }
+
+        // ── Step 2.5: Validate User Wallet Balance ─────────────────────────
+        const User = (await import("../Models/User.js")).default;
+        const bidder = await User.findById(userId);
+        if (!bidder || bidder.walletBalance < newBid) {
+          socket.emit("bid_error", {
+            message: "Insufficient wallet balance to place this bid.",
           });
           return;
         }
@@ -170,6 +188,45 @@ export const setupAuctionSocket = (io) => {
     // ── Store userId on socket for outbid targeting ────────────────────────
     socket.on("authenticate", ({ userId }) => {
       socket.data.userId = userId;
+    });
+
+    // ── WebRTC Signaling & Live Chat ────────────────────────────────────────
+
+    // 1. Chat Message
+    socket.on("chat_message", ({ auctionId, message, user }) => {
+      const room = `auction:${auctionId}`;
+      io.to(room).emit("chat_message", { message, user, timestamp: new Date() });
+    });
+
+    // 2. WebRTC: Broadcaster joins and signals readiness
+    socket.on("broadcaster_joined", ({ auctionId }) => {
+      socket.join(`auction:${auctionId}`);
+      // Notify everyone in the room that the stream is starting/available
+      socket.broadcast.to(`auction:${auctionId}`).emit("broadcaster_ready");
+    });
+
+    // 3. WebRTC: Viewer joins and asks for video
+    socket.on("viewer_joined", ({ auctionId }) => {
+      socket.join(`auction:${auctionId}`);
+      // Tell the broadcaster (and everyone else) that a viewer joined. 
+      // The broadcaster will catch this and send an offer to this specific socket.id
+      socket.broadcast.to(`auction:${auctionId}`).emit("viewer_joined", socket.id);
+    });
+
+    // 4. WebRTC: Offer from Broadcaster to Viewer
+    socket.on("offer", ({ auctionId, viewerId, offer }) => {
+      // Send offer directly to the viewer's socket
+      socket.to(viewerId).emit("offer", { broadcasterId: socket.id, offer });
+    });
+
+    // 5. WebRTC: Answer from Viewer back to Broadcaster
+    socket.on("answer", ({ auctionId, broadcasterId, answer }) => {
+      socket.to(broadcasterId).emit("answer", { viewerId: socket.id, answer });
+    });
+
+    // 6. WebRTC: ICE Candidates exchange
+    socket.on("ice_candidate", ({ auctionId, targetId, candidate }) => {
+      socket.to(targetId).emit("ice_candidate", { senderId: socket.id, candidate });
     });
 
     socket.on("disconnect", () => {

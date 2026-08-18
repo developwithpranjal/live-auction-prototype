@@ -28,16 +28,42 @@ const userSchema = new mongoose.Schema(
       enum: ["buyer", "seller"],
       default: "buyer",
     },
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: [0, "Wallet balance cannot be negative"],
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+    },
+    mobile: {
+      type: String,
+    },
+    dob: {
+      type: Date,
+    },
+    profilePicture: {
+      type: String, // Will store base64 string
+    },
+    addresses: [
+      {
+        label: { type: String, default: "Home" }, // Home, Work, etc.
+        address: String,
+        city: String,
+        pincode: String,
+        isDefault: { type: Boolean, default: false }
+      }
+    ]
   },
   { timestamps: true }
 );
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next();
 });
 
 // Method to compare entered password with hashed password

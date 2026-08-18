@@ -54,8 +54,25 @@ export const AuthProvider = ({ children }) => {
     disconnectSocket();
   };
 
+  const refreshWallet = async () => {
+    if (!token) return;
+    try {
+      const { data } = await api.get("/wallet/balance");
+      const updatedUser = { ...user, walletBalance: data.balance };
+      setUser(updatedUser);
+      localStorage.setItem("auction_user", JSON.stringify(updatedUser));
+    } catch (err) {
+      console.error("Failed to fetch wallet balance", err);
+    }
+  };
+
+  const updateUserSession = (updatedUser) => {
+    setUser({ ...user, ...updatedUser });
+    localStorage.setItem("auction_user", JSON.stringify({ ...user, ...updatedUser }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, signup, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, signup, login, logout, refreshWallet, updateUserSession }}>
       {children}
     </AuthContext.Provider>
   );

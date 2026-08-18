@@ -10,6 +10,9 @@ import Signup from "./pages/Signup.jsx";
 import AuctionDetail from "./pages/AuctionDetail.jsx";
 import CreateAuction from "./pages/CreateAuction.jsx";
 import MyAuctions from "./pages/MyAuctions.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import Tracking from "./pages/Tracking.jsx";
+import Profile from "./pages/Profile.jsx";
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -19,9 +22,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const AppRoutes = () => {
-  const { loading } = useAuth();
-  if (loading) return <div className="loading-state">Loading...</div>;
-
   return (
     <>
       <Navbar />
@@ -47,6 +47,30 @@ const AppRoutes = () => {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checkout/:id"
+            element={
+              <ProtectedRoute>
+                <Checkout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/track/:id"
+            element={
+              <ProtectedRoute>
+                <Tracking />
+              </ProtectedRoute>
+            }
+          />
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -55,9 +79,9 @@ const AppRoutes = () => {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: "#1a1a27",
-            color: "#f0f0ff",
-            border: "1px solid rgba(255,255,255,0.06)",
+            background: "#ffffff",
+            color: "#222222",
+            border: "1px solid var(--accent)",
           },
         }}
       />

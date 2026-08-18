@@ -6,24 +6,31 @@ const SocketContext = createContext(null);
 
 export const SocketProvider = ({ children }) => {
   const { user, token } = useAuth();
-  const [socket, setSocket] = useState(null);
+  // Initialize immediately so socket is never null on first render
+  const [socket, setSocket] = useState(() => getSocket());
 
   useEffect(() => {
+    const s = getSocket();
+
     if (user && token) {
-      const s = connectSocket(token);
-      setSocket(s);
-
-      s.on("connect", () => {
-        console.log("✅ Socket connected:", s.id);
-      });
-
-      s.on("connect_error", (err) => {
-        console.error("Socket connection error:", err.message);
-      });
-    } else {
-      // Not logged in — just expose the socket instance (not connected)
-      setSocket(getSocket());
+      connectSocket(token);
     }
+
+    // Always keep context in sync with the singleton
+    setSocket(s);
+
+    const onConnect = () => console.log("✅ Socket connected:", s.id);
+    const onConnectError = (err) =>
+      console.error("Socket connection error:", err.message);
+
+    s.on("connect", onConnect);
+    s.on("connect_error", onConnectError);
+
+    // Clean up listeners on every re-run to prevent accumulation
+    return () => {
+      s.off("connect", onConnect);
+      s.off("connect_error", onConnectError);
+    };
   }, [user, token]);
 
   return (
