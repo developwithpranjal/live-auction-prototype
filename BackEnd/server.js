@@ -24,6 +24,7 @@ const io = new Server(server, {
 
 // Wire all auction socket events (join, bid, leave, outbid)
 setupAuctionSocket(io);
+app.set("io", io); // Make io available in controllers
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const start = async () => {

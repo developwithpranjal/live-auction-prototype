@@ -130,3 +130,47 @@ export const getMyAuctions = async (req, res) => {
     res.status(500).json({ message: "Server error fetching your auctions" });
   }
 };
+
+// @desc    End an auction early (Seller only)
+// @route   PUT /api/auctions/:id/end
+// @access  Private
+export const endAuctionEarly = async (req, res) => {
+  try {
+    const auction = await Auction.findById(req.params.id);
+    if (!auction) {
+      return res.status(404).json({ message: "Auction not found" });
+    }
+
+    if (auction.seller.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Only the seller can end this auction early" });
+    }
+
+    if (auction.status !== "live") {
+      return res.status(400).json({ message: "Only live auctions can be ended early" });
+    }
+
+    auction.status = "ended";
+    auction.endTime = new Date(); // Update end time to now
+    
+    // Set winner if there's a highest bidder
+    if (auction.highestBidder) {
+      auction.winnerId = auction.highestBidder;
+    }
+
+    await auction.save();
+
+    // Broadcast to socket room
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`auction:${auction._id}`).emit("auction_ended", {
+        winner: auction.winnerId,
+        finalPrice: auction.currentPrice
+      });
+    }
+
+    res.status(200).json({ message: "Auction ended early successfully", auction });
+  } catch (error) {
+    console.error("End auction early error:", error);
+    res.status(500).json({ message: "Server error ending auction early" });
+  }
+};

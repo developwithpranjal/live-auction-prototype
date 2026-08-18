@@ -318,6 +318,17 @@ const AuctionDetail = () => {
     socket.emit("place_bid", { auctionId: id, amount, userId: user._id, userName: user.name });
   };
 
+  const handleEndAuctionEarly = async () => {
+    if (!window.confirm("Are you sure you want to end this auction early? The current highest bidder will win immediately.")) return;
+    try {
+      await api.put(`/auctions/${id}/end`);
+      toast.success("Auction ended early successfully!");
+      // The socket event "auction_ended" will be broadcasted and caught by the useEffect to update UI automatically
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to end auction early");
+    }
+  };
+
   if (loading) return <div className="loading-state">Loading auction...</div>;
   if (error) return <div className="container page"><div className="error-state">{error}</div></div>;
   if (!auction) return null;
@@ -475,7 +486,18 @@ const AuctionDetail = () => {
             user={user}
           />
 
-          {isSeller && auction.status === "live" && <p style={{ fontSize: "0.85rem", color: "var(--accent)", textAlign: "center", marginTop: "10px", fontWeight: "600" }}>You are the seller of this item. You cannot bid on it.</p>}
+          {isSeller && auction.status === "live" && (
+            <div style={{ marginTop: "1rem", textAlign: "center", padding: "15px", border: "1px dashed var(--danger)", borderRadius: "8px", background: "rgba(239, 68, 68, 0.05)" }}>
+              <p style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: "600", marginBottom: "15px" }}>You are the seller of this item. You cannot bid on it.</p>
+              <button 
+                onClick={handleEndAuctionEarly} 
+                className="btn btn-outline" 
+                style={{ width: "100%", borderColor: "var(--danger)", color: "var(--danger)" }}
+              >
+                Close Auction Early
+              </button>
+            </div>
+          )}
           {!user && auction.status === "live" && <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", textAlign: "center", marginTop: "10px" }}><a href="/login" style={{ color: "var(--accent)" }}>Log in</a> to place a bid</p>}
         </div>
 
