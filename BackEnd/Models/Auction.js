@@ -77,6 +77,50 @@ const auctionSchema = new mongoose.Schema(
       enum: ['processing', 'shipped', 'out_for_delivery', 'delivered'],
       default: 'processing',
     },
+    category: {
+      type: String,
+      required: [true, "Category is required"],
+      enum: ["Electronics", "Watches", "Art", "Collectibles", "Fashion", "Automotive", "Other"],
+    },
+    condition: {
+      type: String,
+      required: [true, "Condition is required"],
+      enum: ["New", "Like New", "Good", "Fair", "For Parts"],
+    },
+    itemSpecifics: {
+      type: Map,
+      of: String,
+      default: {},
+    },
+    reservePrice: {
+      type: Number,
+      validate: {
+        validator: function (value) {
+          if (value == null) return true;
+          return value >= this.startPrice;
+        },
+        message: "Reserve price must be greater than or equal to the starting price",
+      },
+    },
+    buyNowPrice: {
+      type: Number,
+    },
+    shippingDetails: {
+      cost: Number,
+      weight: Number,
+      handlingDays: Number,
+      localPickupAvailable: {
+        type: Boolean,
+        default: false,
+      },
+    },
+    returnPolicy: {
+      returnsAccepted: {
+        type: Boolean,
+        default: false,
+      },
+      returnWindowDays: Number,
+    },
   },
   { timestamps: true }
 );

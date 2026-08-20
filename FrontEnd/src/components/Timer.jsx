@@ -1,17 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 /**
  * Countdown timer component.
  * Shows HH:MM:SS remaining or "Auction Ended" / "Starting Soon".
  * Turns urgent (red pulse) when < 60 seconds remain.
  */
-const Timer = ({ endTime, startTime, status }) => {
+const Timer = ({ endTime, startTime, status, serverTime, onStateChange }) => {
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
+  const [timeOffset, setTimeOffset] = useState(0);
+  const stateChangeTriggered = useRef(false);
+
+  useEffect(() => {
+    stateChangeTriggered.current = false;
+  }, [status]);
+
+  useEffect(() => {
+    if (serverTime) {
+      // Calculate diff between server time and local time
+      const offset = new Date(serverTime).getTime() - Date.now();
+      setTimeOffset(offset);
+    }
+  }, [serverTime]);
 
   useEffect(() => {
     const calculate = () => {
-      const now = new Date();
+      // Use offset to get a synchronized 'now'
+      const now = new Date(Date.now() + timeOffset);
 
       if (status === "ended") {
         setTimeLeft("Auction Ended");
@@ -23,6 +38,10 @@ const Timer = ({ endTime, startTime, status }) => {
         const diff = new Date(startTime) - now;
         if (diff <= 0) {
           setTimeLeft("Starting...");
+          if (onStateChange && !stateChangeTriggered.current) {
+            stateChangeTriggered.current = true;
+            onStateChange("live");
+          }
           return;
         }
         const h = Math.floor(diff / 3600000);
@@ -39,6 +58,10 @@ const Timer = ({ endTime, startTime, status }) => {
       if (diff <= 0) {
         setTimeLeft("Ending...");
         setIsUrgent(true);
+        if (onStateChange && !stateChangeTriggered.current) {
+          stateChangeTriggered.current = true;
+          onStateChange("ended");
+        }
         return;
       }
 
@@ -59,7 +82,7 @@ const Timer = ({ endTime, startTime, status }) => {
     calculate();
     const interval = setInterval(calculate, 1000);
     return () => clearInterval(interval);
-  }, [endTime, startTime, status]);
+  }, [endTime, startTime, status, timeOffset]);
 
   return (
     <span className={`auction-timer-display ${isUrgent ? "urgent" : ""}`}>

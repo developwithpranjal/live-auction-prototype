@@ -93,6 +93,14 @@ export const setupAuctionSocket = (io) => {
           return;
         }
 
+        const maxBid = auction.currentPrice * 1.5;
+        if (newBid > maxBid) {
+          socket.emit("bid_error", {
+            message: `Custom bid cannot exceed 50% of the current price (Max allowed: ₹${maxBid})`,
+          });
+          return;
+        }
+
         // ── Step 2.5: Validate User Wallet Balance ─────────────────────────
         const User = (await import("../Models/User.js")).default;
         const bidder = await User.findById(userId);

@@ -1,4 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useCart } from "../context/CartContext.jsx";
+import api from "../services/api.js";
 import Timer from "./Timer.jsx";
 
 const StatusBadge = ({ status }) => {
@@ -15,8 +19,28 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const AuctionCard = ({ auction }) => {
+const AuctionCard = ({ auction, serverTime }) => {
+  const { user, updateUserSession } = useAuth();
+  const { isInCart, addToCart, removeFromCart } = useCart();
   const { _id, title, images, currentPrice, status, startTime, endTime, seller } = auction;
+
+  const [loading, setLoading] = useState(false);
+  const isWishlisted = user?.wishlist?.includes(_id) || false;
+
+  const handleWishlistToggle = async (e) => {
+    e.preventDefault(); // Prevent navigating to AuctionDetail
+    e.stopPropagation();
+    if (!user) return;
+    try {
+      setLoading(true);
+      const { data } = await api.post("/users/wishlist", { auctionId: _id });
+      updateUserSession({ wishlist: data.wishlist });
+    } catch (err) {
+      console.error("Failed to toggle wishlist", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const firstImage = images && images.length > 0 ? images[0].url : null;
 
@@ -27,8 +51,20 @@ const AuctionCard = ({ auction }) => {
       maximumFractionDigits: 0,
     }).format(price);
 
+  const inCart = isInCart(_id);
+
+  const handleCartToggle = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (inCart) {
+      await removeFromCart(_id);
+    } else {
+      await addToCart(_id);
+    }
+  };
+
   return (
-    <Link to={`/auction/${_id}`} className="auction-card fade-in">
+    <Link to={`/auction/${_id}`} className="auction-card fade-in" style={{ position: "relative", display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Image */}
       <div className="auction-card-image">
         {firstImage ? (
@@ -39,6 +75,34 @@ const AuctionCard = ({ auction }) => {
         <div className="auction-card-badge">
           <StatusBadge status={status} />
         </div>
+        {user && (
+          <button
+            onClick={handleWishlistToggle}
+            disabled={loading}
+            style={{
+              position: "absolute",
+              top: "10px",
+              right: "10px",
+              background: "rgba(255,255,255,0.8)",
+              border: "none",
+              borderRadius: "50%",
+              width: "36px",
+              height: "36px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              zIndex: 2,
+              fontSize: "1.2rem",
+              transition: "transform 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+            title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+          >
+            {isWishlisted ? "❤️" : "🤍"}
+          </button>
+        )}
       </div>
 
       {/* Body */}
@@ -62,6 +126,7 @@ const AuctionCard = ({ auction }) => {
                 endTime={endTime}
                 startTime={startTime}
                 status={status}
+                serverTime={serverTime}
               />
             </div>
           )}
@@ -69,11 +134,29 @@ const AuctionCard = ({ auction }) => {
       </div>
 
       {/* Footer */}
-      <div className="auction-card-footer">
-        <span>
+      <div className="auction-card-footer" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
           {images?.length > 1 ? `📷 ${images.length} photos` : "📷 1 photo"}
         </span>
-        <span>View →</span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          {user && status !== "ended" && (
+            <button
+              onClick={handleCartToggle}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: inCart ? "var(--success)" : "var(--accent)",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "0.85rem",
+                padding: 0
+              }}
+            >
+              {inCart ? "✓ In Cart" : "🛒 Add to Cart"}
+            </button>
+          )}
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>View →</span>
+        </div>
       </div>
     </Link>
   );

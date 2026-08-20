@@ -5,39 +5,39 @@
 :root {
   /* Colors */
   --bg-primary: #ffffff;
-  --bg-secondary: #ffffff;
+  --bg-secondary: #f9f9f9;
   --bg-card: #ffffff;
-  --bg-card-hover: rgba(162, 203, 139, 0.05);
+  --bg-card-hover: rgba(230, 172, 39, 0.05);
   --bg-input: #ffffff;
 
-  --accent: #A2CB8B;
-  --accent-hover: #8eb778;
-  --accent-light: rgba(162, 203, 139, 0.15);
-  --accent-glow: rgba(162, 203, 139, 0.35);
+  --accent: #E6AC27;
+  --accent-hover: #cf9a22;
+  --accent-light: rgba(230, 172, 39, 0.15);
+  --accent-glow: rgba(230, 172, 39, 0.35);
 
-  --secondary-accent: #FF937E;
+  --secondary-accent: #000000;
 
-  --success: #A2CB8B;
-  --success-light: rgba(162, 203, 139, 0.15);
-  --danger: #FF937E;
-  --danger-light: rgba(255, 147, 126, 0.15);
-  --warning: #FF937E;
-  --warning-light: rgba(255, 147, 126, 0.15);
+  --success: #28a745;
+  --success-light: rgba(40, 167, 69, 0.15);
+  --danger: #dc3545;
+  --danger-light: rgba(220, 53, 69, 0.15);
+  --warning: #E6AC27;
+  --warning-light: rgba(230, 172, 39, 0.15);
 
-  --text-primary: #222222;
-  --text-secondary: #555555;
-  --text-muted: #999999;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-muted: #777777;
 
-  --border: #e0e0e0;
-  --border-hover: #A2CB8B;
+  --border: #eaeaea;
+  --border-hover: #E6AC27;
 
   /* Status Colors */
   --live-color: #ffffff;
-  --live-bg: #FF937E;
-  --upcoming-color: #ffffff;
-  --upcoming-bg: #A2CB8B;
+  --live-bg: #dc3545;
+  --upcoming-color: #000000;
+  --upcoming-bg: #E6AC27;
   --ended-color: #ffffff;
-  --ended-bg: #999999;
+  --ended-bg: #6c757d;
 
   /* Spacing */
   --radius-sm: 8px;

@@ -7,7 +7,7 @@ import {
   endAuctionEarly,
   deleteAuction,
 } from "../Controllers/auctionController.js";
-import { protect } from "../Middleware/authMiddleware.js";
+import { protect, softProtect } from "../Middleware/authMiddleware.js";
 import { uploadImages } from "../Middleware/uploadMiddleware.js";
 
 const router = express.Router();
@@ -16,7 +16,7 @@ const router = express.Router();
 router.get("/my", protect, getMyAuctions);
 
 router.get("/", getAllAuctions);
-router.get("/:id", getAuctionById);
+router.get("/:id", softProtect, getAuctionById);
 router.put("/:id/end", protect, endAuctionEarly);
 router.delete("/:id", protect, deleteAuction);
 router.post("/", protect, uploadImages, createAuction);

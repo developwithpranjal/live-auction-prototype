@@ -10,6 +10,7 @@ const Home = () => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [serverTime, setServerTime] = useState(null);
 
   useEffect(() => {
     const fetchAuctions = async () => {
@@ -18,6 +19,7 @@ const Home = () => {
         const params = filter !== "all" ? { status: filter } : {};
         const { data } = await api.get("/auctions", { params });
         setAuctions(data.auctions);
+        setServerTime(data.serverTime);
       } catch (err) {
         setError("Failed to load auctions. Is the server running?");
         console.error(err);
@@ -106,7 +108,7 @@ const Home = () => {
         ) : (
           <div className="auctions-grid">
             {auctions.map((auction) => (
-              <AuctionCard key={auction._id} auction={auction} />
+              <AuctionCard key={auction._id} auction={auction} serverTime={serverTime} />
             ))}
           </div>
         )}

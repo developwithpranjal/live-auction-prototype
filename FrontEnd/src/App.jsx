@@ -3,7 +3,9 @@ import { Toaster } from "react-hot-toast";
 import "./App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { SocketProvider } from "./context/SocketContext.jsx";
+import { CartProvider } from "./context/CartContext.jsx";
 import Navbar from "./components/Navbar.jsx";
+import Footer from "./components/Footer.jsx";
 import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
@@ -13,6 +15,8 @@ import MyAuctions from "./pages/MyAuctions.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import Tracking from "./pages/Tracking.jsx";
 import Profile from "./pages/Profile.jsx";
+import Wishlist from "./pages/Wishlist.jsx";
+import Cart from "./pages/Cart.jsx";
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -56,6 +60,22 @@ const AppRoutes = () => {
             }
           />
           <Route
+            path="/wishlist"
+            element={
+              <ProtectedRoute>
+                <Wishlist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <ProtectedRoute>
+                <Cart />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/checkout/:id"
             element={
               <ProtectedRoute>
@@ -75,6 +95,7 @@ const AppRoutes = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <Footer />
       <Toaster
         position="bottom-right"
         toastOptions={{
@@ -93,9 +114,11 @@ const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SocketProvider>
-          <AppRoutes />
-        </SocketProvider>
+        <CartProvider>
+          <SocketProvider>
+            <AppRoutes />
+          </SocketProvider>
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   );

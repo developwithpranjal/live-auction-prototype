@@ -26,6 +26,10 @@ export const addFunds = async (req, res) => {
       return res.status(400).json({ message: "Invalid amount" });
     }
 
+    if (Number(amount) > 500000) {
+      return res.status(400).json({ message: "You cannot add more than ₹5,00,000 at a time." });
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });

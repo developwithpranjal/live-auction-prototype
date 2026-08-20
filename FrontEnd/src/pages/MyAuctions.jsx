@@ -12,6 +12,7 @@ const MyAuctions = () => {
   const [biddedAuctions, setBiddedAuctions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [serverTime, setServerTime] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -21,6 +22,7 @@ const MyAuctions = () => {
         const { data } = await api.get("/auctions/my");
         setMyListings(data.myListings);
         setBiddedAuctions(data.biddedAuctions);
+        setServerTime(data.serverTime);
       } catch (err) {
         setError("Failed to load your auctions");
         console.error(err);
@@ -109,7 +111,7 @@ const MyAuctions = () => {
       ) : (
         <div className="auctions-grid">
           {currentList.map((auction) => (
-            <AuctionCard key={auction._id} auction={auction} />
+            <AuctionCard key={auction._id} auction={auction} serverTime={serverTime} />
           ))}
         </div>
       )}

@@ -7,6 +7,9 @@ import bidRoutes from "./Routes/bidRoutes.js";
 import walletRoutes from "./Routes/walletRoutes.js";
 import checkoutRoutes from "./Routes/checkoutRoutes.js";
 import trackingRoutes from "./Routes/trackingRoutes.js";
+import userRoutes from "./Routes/userRoutes.js";
+import offerRoutes from "./Routes/offerRoutes.js";
+import cartRoutes from "./Routes/cartRoutes.js";
 
 const app = express();
 
@@ -28,6 +31,9 @@ app.use("/api/bids", bidRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/checkout", checkoutRoutes);
 app.use("/api/tracking", trackingRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/offers", offerRoutes);
+app.use("/api/cart", cartRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/api/health", (req, res) => {

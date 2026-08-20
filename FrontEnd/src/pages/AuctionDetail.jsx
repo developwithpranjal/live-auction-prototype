@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useCart } from "../context/CartContext.jsx";
 import Timer from "../components/Timer.jsx";
 import api from "../services/api.js";
 import toast from "react-hot-toast";
@@ -67,11 +68,47 @@ const BidBox = ({ currentPrice, bidIncrement, onBid, disabled, status, user }) =
   );
 };
 
+// ── Offer Box Component ────────────────────────────────────────────────────────
+const OfferBox = ({ startPrice, onOffer, disabled, status, user }) => {
+  const minOffer = startPrice * 1.3;
+  const [offerAmount, setOfferAmount] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const amount = Number(offerAmount);
+    if (isNaN(amount) || amount < minOffer) {
+      setError(`Minimum offer is ${formatPrice(minOffer)}`);
+      return;
+    }
+    setError("");
+    setLoading(true);
+    await onOffer(amount);
+    setLoading(false);
+    setOfferAmount("");
+  };
+
+  if (status !== "live") return null;
+
+  return (
+    <form className="bid-box" style={{ marginTop: "1rem" }} onSubmit={handleSubmit}>
+      <p className="bid-box-title">Make an Offer</p>
+      <div className="bid-box-input-row">
+        <input type="number" className="form-input" value={offerAmount} onChange={(e) => { setOfferAmount(e.target.value); setError(""); }} min={minOffer} disabled={disabled || loading} placeholder={`Min: ₹${minOffer.toFixed(0)}`} />
+        <button type="submit" className="btn btn-outline" disabled={disabled || loading}>Offer</button>
+      </div>
+      <p className="bid-box-hint">Minimum offer: <strong>{formatPrice(minOffer)}</strong> (30% above start price)</p>
+      {error && <p className="bid-box-error">{error}</p>}
+    </form>
+  );
+};
+
 // ── Main Auction Detail Page ───────────────────────────────────────────────────
 const AuctionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUserSession } = useAuth();
   const { socket } = useSocket();
 
   const [auction, setAuction] = useState(null);
@@ -79,10 +116,35 @@ const AuctionDetail = () => {
   const [currentPrice, setCurrentPrice] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [serverTime, setServerTime] = useState(null);
   const [bidError, setBidError] = useState("");
   const [outbidAlert, setOutbidAlert] = useState(false);
   const [priceUpdated, setPriceUpdated] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
+
+  // Offers state
+  const [offers, setOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const isWishlisted = user?.wishlist?.includes(id) || false;
+
+  const { isInCart, addToCart, removeFromCart } = useCart();
+  const inCart = isInCart(id);
+
+  const handleWishlistToggle = async () => {
+    if (!user) return;
+    try {
+      setWishlistLoading(true);
+      const { data } = await api.post("/users/wishlist", { auctionId: id });
+      updateUserSession({ wishlist: data.wishlist });
+      toast.success(data.message);
+    } catch (err) {
+      toast.error("Failed to update wishlist");
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
 
   // ── WebRTC & Chat State ──────────────────────────────────────────────────────
   const [isStreaming, setIsStreaming] = useState(false);
@@ -105,23 +167,67 @@ const AuctionDetail = () => {
   const isSeller = user && auction && auction.seller && 
     (typeof auction.seller === 'string' ? auction.seller === user._id : auction.seller._id === user._id);
 
+  const fetchAuction = async () => {
+    try {
+      // Don't set loading to true on refresh so it doesn't flicker
+      if (!auction) setLoading(true);
+      const { data } = await api.get(`/auctions/${id}`);
+      setAuction(data.auction);
+      setCurrentPrice(data.auction.currentPrice);
+      setBids(data.bids || []);
+      setServerTime(data.serverTime);
+    } catch (err) {
+      setError("Failed to load auction. It may not exist.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ── 1. Load auction data ──────────────────────────────────────────
   useEffect(() => {
-    const fetchAuction = async () => {
-      try {
-        setLoading(true);
-        const { data } = await api.get(`/auctions/${id}`);
-        setAuction(data.auction);
-        setCurrentPrice(data.auction.currentPrice);
-        setBids(data.bids || []);
-      } catch (err) {
-        setError("Failed to load auction. It may not exist.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAuction();
   }, [id]);
+
+  useEffect(() => {
+    if (isSeller && auction && auction.status === "live") {
+      const fetchOffers = async () => {
+        try {
+          setOffersLoading(true);
+          const { data } = await api.get(`/offers/${id}`);
+          setOffers(data.offers || []);
+        } catch (err) {
+          console.error("Failed to fetch offers");
+        } finally {
+          setOffersLoading(false);
+        }
+      };
+      fetchOffers();
+    }
+  }, [isSeller, auction, id]);
+
+  const handleMakeOffer = async (amount) => {
+    if (!user) return toast.error("Please log in to make an offer");
+    try {
+      await api.post("/offers", { auctionId: id, amount });
+      toast.success("Offer submitted successfully!");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit offer");
+    }
+  };
+
+  const handleRespondOffer = async (offerId, action) => {
+    try {
+      await api.put(`/offers/${offerId}/respond`, { action });
+      toast.success(`Offer ${action}ed successfully`);
+      if (action === "accept") {
+        fetchAuction(); // Refresh auction to see ended status
+      } else {
+        setOffers(offers.filter(o => o._id !== offerId));
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to ${action} offer`);
+    }
+  };
 
   // ── 2. Socket.io Bidding Logic ──────────────────────
   useEffect(() => {
@@ -363,11 +469,11 @@ const AuctionDetail = () => {
               </div>
 
               {!isStreaming && (
-                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 5, color: "white" }}>
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 20, color: "white", pointerEvents: "none" }}>
                   {isSeller ? (
                     <>
                       <p style={{ marginBottom: 15 }}>You are the seller. Ready to go live?</p>
-                      <button onClick={startLiveStream} className="btn btn-primary" style={{ background: "var(--live-bg)", border: "none" }}>📸 Start Live Stream</button>
+                      <button onClick={startLiveStream} className="btn btn-primary" style={{ background: "var(--live-bg)", border: "none", pointerEvents: "auto" }}>📸 Start Live Stream</button>
                       {streamError && <p style={{ color: "var(--danger)", marginTop: 10, fontSize: "0.85rem" }}>{streamError}</p>}
                     </>
                   ) : (
@@ -385,10 +491,10 @@ const AuctionDetail = () => {
               />
 
               {/* Instagram-style Chat Overlay */}
-              <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "50%", background: "linear-gradient(transparent, rgba(0,0,0,0.8))", zIndex: 10, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "10px" }}>
+              <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: "50%", background: "linear-gradient(transparent, rgba(0,0,0,0.8))", zIndex: 10, display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "10px", pointerEvents: "none" }}>
                 
                 {/* Chat Messages */}
-                <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px", maxHeight: "150px" }} className="hide-scrollbar">
+                <div style={{ overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px", maxHeight: "150px", pointerEvents: "auto" }} className="hide-scrollbar">
                   {chats.map((c, i) => (
                     <div key={i} style={{ color: "white", fontSize: "0.85rem", textShadow: "1px 1px 2px black" }}>
                       <span style={{ fontWeight: 600, marginRight: 5, color: "var(--accent)" }}>{c.user}</span>
@@ -398,7 +504,7 @@ const AuctionDetail = () => {
                 </div>
 
                 {/* Chat Input */}
-                <form onSubmit={sendChat} style={{ display: "flex", gap: "5px" }}>
+                <form onSubmit={sendChat} style={{ display: "flex", gap: "5px", pointerEvents: "auto" }}>
                   <input 
                     type="text" 
                     placeholder={user ? "Add a comment..." : "Login to chat..."}
@@ -449,7 +555,59 @@ const AuctionDetail = () => {
               {auction.status === "live" && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--live-color)", display: "inline-block", marginRight: 4 }} />}
               {auction.status}
             </span>
-            <h1 className="auction-info-title">{auction.title}</h1>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+              <h1 className="auction-info-title" style={{ margin: 0 }}>{auction.title}</h1>
+              <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+                {user && auction.status !== "ended" && !isSeller && (
+                  <button
+                    onClick={() => inCart ? removeFromCart(id) : addToCart(id)}
+                    style={{
+                      background: "var(--bg-card)",
+                      border: `1px solid ${inCart ? "var(--success)" : "var(--border)"}`,
+                      borderRadius: "8px",
+                      padding: "0 12px",
+                      height: "40px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      color: inCart ? "var(--success)" : "var(--text-primary)",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.borderColor = inCart ? "var(--success)" : "var(--accent)"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.borderColor = inCart ? "var(--success)" : "var(--border)"; }}
+                  >
+                    {inCart ? "✓ In Cart" : "🛒 Add to Cart"}
+                  </button>
+                )}
+                {user && (
+                  <button
+                    onClick={handleWishlistToggle}
+                    disabled={wishlistLoading}
+                    style={{
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "50%",
+                      width: "40px",
+                      height: "40px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "1.2rem",
+                      transition: "transform 0.2s, border-color 0.2s",
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                    title={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                  >
+                    {isWishlisted ? "❤️" : "🤍"}
+                  </button>
+                )}
+              </div>
+            </div>
             <p className="auction-info-meta">
               Listed by <strong>{auction.seller?.name || "Unknown"}</strong> · Ends {new Date(auction.endTime).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
             </p>
@@ -485,7 +643,7 @@ const AuctionDetail = () => {
 
           <div className="auction-timer-panel">
             <p className="auction-timer-label">{auction.status === "upcoming" ? "Auction Starts In" : auction.status === "live" ? "Time Remaining" : "Auction Ended"}</p>
-            <Timer endTime={auction.endTime} startTime={auction.startTime} status={auction.status} />
+            <Timer endTime={auction.endTime} startTime={auction.startTime} status={auction.status} serverTime={serverTime} onStateChange={fetchAuction} />
           </div>
 
           <BidBox
@@ -497,16 +655,53 @@ const AuctionDetail = () => {
             user={user}
           />
 
+          {!isSeller && auction.status === "live" && user && (
+            <OfferBox
+              startPrice={auction.startPrice}
+              onOffer={handleMakeOffer}
+              disabled={false}
+              status={auction.status}
+              user={user}
+            />
+          )}
+
           {isSeller && auction.status === "live" && (
-            <div style={{ marginTop: "1rem", textAlign: "center", padding: "15px", border: "1px dashed var(--danger)", borderRadius: "8px", background: "rgba(239, 68, 68, 0.05)" }}>
-              <p style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: "600", marginBottom: "15px" }}>You are the seller of this item. You cannot bid on it.</p>
-              <button 
-                onClick={handleEndAuctionEarly} 
-                className="btn btn-outline" 
-                style={{ width: "100%", borderColor: "var(--danger)", color: "var(--danger)" }}
-              >
-                Close Auction Early
-              </button>
+            <div style={{ marginTop: "1rem" }}>
+              <div style={{ textAlign: "center", padding: "15px", border: "1px dashed var(--danger)", borderRadius: "8px", background: "rgba(239, 68, 68, 0.05)" }}>
+                <p style={{ fontSize: "0.85rem", color: "var(--accent)", fontWeight: "600", marginBottom: "15px" }}>You are the seller of this item. You cannot bid on it.</p>
+                <button 
+                  onClick={handleEndAuctionEarly} 
+                  className="btn btn-outline" 
+                  style={{ width: "100%", borderColor: "var(--danger)", color: "var(--danger)" }}
+                >
+                  Close Auction Early
+                </button>
+              </div>
+
+              {/* View Offers Section for Seller */}
+              <div style={{ marginTop: "1.5rem", padding: "15px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)" }}>
+                <h4 style={{ margin: "0 0 10px 0" }}>Pending Offers</h4>
+                {offersLoading ? (
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Loading offers...</p>
+                ) : offers.length === 0 ? (
+                  <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No pending offers yet.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {offers.map(offer => (
+                      <div key={offer._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "rgba(0,0,0,0.03)", borderRadius: "8px" }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{formatPrice(offer.amount)}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>by {offer.buyer?.name}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: "5px" }}>
+                          <button onClick={() => handleRespondOffer(offer._id, "accept")} style={{ background: "var(--success)", color: "white", border: "none", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold" }}>Accept</button>
+                          <button onClick={() => handleRespondOffer(offer._id, "reject")} style={{ background: "transparent", color: "var(--danger)", border: "1px solid var(--danger)", padding: "4px 8px", borderRadius: "4px", cursor: "pointer", fontSize: "0.75rem" }}>Reject</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

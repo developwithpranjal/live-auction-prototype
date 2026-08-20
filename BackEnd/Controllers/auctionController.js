@@ -1,24 +1,64 @@
 import Auction from "../Models/Auction.js";
 import Bid from "../Models/Bid.js";
 
+// Helper to lazily update statuses of all auctions based on current time
+const lazyUpdateAuctionStatuses = async () => {
+  const now = new Date();
+  try {
+    await Auction.updateMany(
+      { status: "upcoming", startTime: { $lte: now }, endTime: { $gt: now } },
+      { $set: { status: "live" } }
+    );
+    await Auction.updateMany(
+      { status: "live", endTime: { $lte: now } },
+      { $set: { status: "ended" } }
+    );
+  } catch (error) {
+    console.error("Lazy status update failed", error);
+  }
+};
+
 // @desc    Create a new auction
 // @route   POST /api/auctions
 // @access  Private
 export const createAuction = async (req, res) => {
   try {
-    const { title, description, startPrice, bidIncrement, startTime, endTime } =
-      req.body;
+    let { title, description, startPrice, bidIncrement, startTime, endTime, category, condition, itemSpecifics, reservePrice, buyNowPrice, shippingDetails, returnPolicy } = req.body;
 
-    if (!title || !startPrice || !startTime || !endTime) {
+    // Sanitize empty strings to undefined for Number fields to prevent Mongoose CastError
+    reservePrice = (!reservePrice || reservePrice === "null") ? undefined : Number(reservePrice);
+    buyNowPrice = (!buyNowPrice || buyNowPrice === "null") ? undefined : Number(buyNowPrice);
+
+    itemSpecifics = typeof itemSpecifics === 'string' ? JSON.parse(itemSpecifics) : itemSpecifics;
+    
+    shippingDetails = typeof shippingDetails === 'string' ? JSON.parse(shippingDetails) : shippingDetails;
+    if (shippingDetails) {
+      if (shippingDetails.cost === "") shippingDetails.cost = undefined;
+      if (shippingDetails.weight === "") shippingDetails.weight = undefined;
+      if (shippingDetails.handlingDays === "") shippingDetails.handlingDays = undefined;
+    }
+
+    returnPolicy = typeof returnPolicy === 'string' ? JSON.parse(returnPolicy) : returnPolicy;
+    if (returnPolicy) {
+      if (returnPolicy.returnWindowDays === "") returnPolicy.returnWindowDays = undefined;
+    }
+
+    if (!title || !startPrice || !startTime || !endTime || !category || !condition) {
       return res
         .status(400)
-        .json({ message: "title, startPrice, startTime, endTime are required" });
+        .json({ message: "title, startPrice, startTime, endTime, category, condition are required" });
     }
 
     if (new Date(endTime) <= new Date(startTime)) {
       return res
         .status(400)
         .json({ message: "End time must be after start time" });
+    }
+
+    if (reservePrice && Number(reservePrice) < Number(startPrice)) {
+      return res
+        .status(400)
+        .json({ message: "Reserve price cannot be less than the starting price" });
     }
 
     // Images uploaded by multer-storage-cloudinary are in req.files
@@ -45,6 +85,13 @@ export const createAuction = async (req, res) => {
           : new Date(startTime) > new Date()
           ? "upcoming"
           : "ended",
+      category,
+      condition,
+      itemSpecifics,
+      reservePrice,
+      buyNowPrice,
+      shippingDetails,
+      returnPolicy,
     });
 
     res.status(201).json({ auction });
@@ -59,6 +106,8 @@ export const createAuction = async (req, res) => {
 // @access  Public
 export const getAllAuctions = async (req, res) => {
   try {
+    await lazyUpdateAuctionStatuses();
+
     const filter = {};
     if (req.query.status) {
       filter.status = req.query.status;
@@ -69,7 +118,7 @@ export const getAllAuctions = async (req, res) => {
       .populate("highestBidder", "name")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ auctions });
+    res.status(200).json({ auctions, serverTime: new Date() });
   } catch (error) {
     console.error("Get auctions error:", error);
     res.status(500).json({ message: "Server error fetching auctions" });
@@ -81,6 +130,8 @@ export const getAllAuctions = async (req, res) => {
 // @access  Public
 export const getAuctionById = async (req, res) => {
   try {
+    await lazyUpdateAuctionStatuses();
+
     const auction = await Auction.findById(req.params.id)
       .populate("seller", "name email")
       .populate("highestBidder", "name")
@@ -90,13 +141,18 @@ export const getAuctionById = async (req, res) => {
       return res.status(404).json({ message: "Auction not found" });
     }
 
+    let auctionObj = auction.toObject();
+    if (!req.user || req.user._id.toString() !== auctionObj.seller._id.toString()) {
+      delete auctionObj.reservePrice;
+    }
+
     // Fetch recent bid history for this auction (latest 50)
     const bids = await Bid.find({ auction: req.params.id })
       .populate("bidder", "name")
       .sort({ createdAt: -1 })
       .limit(50);
 
-    res.status(200).json({ auction, bids });
+    res.status(200).json({ auction: auctionObj, bids, serverTime: new Date() });
   } catch (error) {
     console.error("Get auction error:", error);
     res.status(500).json({ message: "Server error fetching auction" });
@@ -108,6 +164,8 @@ export const getAuctionById = async (req, res) => {
 // @access  Private
 export const getMyAuctions = async (req, res) => {
   try {
+    await lazyUpdateAuctionStatuses();
+
     const userId = req.user._id;
 
     // Auctions I created
@@ -124,7 +182,7 @@ export const getMyAuctions = async (req, res) => {
       .populate("winnerId", "name")
       .sort({ createdAt: -1 });
 
-    res.status(200).json({ myListings, biddedAuctions });
+    res.status(200).json({ myListings, biddedAuctions, serverTime: new Date() });
   } catch (error) {
     console.error("Get my auctions error:", error);
     res.status(500).json({ message: "Server error fetching your auctions" });

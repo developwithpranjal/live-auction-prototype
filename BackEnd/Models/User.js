@@ -54,6 +54,12 @@ const userSchema = new mongoose.Schema(
         pincode: String,
         isDefault: { type: Boolean, default: false }
       }
+    ],
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Auction"
+      }
     ]
   },
   { timestamps: true }

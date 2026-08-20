@@ -1,10 +1,12 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useCart } from "../context/CartContext.jsx";
 import Wallet from "./Wallet.jsx";
 import "../styles/navbar.css";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { cartItems } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -44,6 +46,12 @@ const Navbar = () => {
                 My Auctions
               </Link>
               <Link
+                to="/wishlist"
+                className={`navbar-link ${isActive("/wishlist") ? "active" : ""}`}
+              >
+                Wishlist
+              </Link>
+              <Link
                 to="/create"
                 className={`navbar-link ${isActive("/create") ? "active" : ""}`}
               >
@@ -57,6 +65,14 @@ const Navbar = () => {
         <div className="navbar-user">
           {user ? (
             <>
+              <Link to="/cart" style={{ position: "relative", display: "flex", alignItems: "center", textDecoration: "none", color: "var(--text-primary)", fontSize: "1.2rem", padding: "8px" }} title="View Cart">
+                🛒
+                {cartItems.length > 0 && (
+                  <span style={{ position: "absolute", top: 0, right: 0, background: "var(--danger)", color: "white", fontSize: "0.7rem", fontWeight: "bold", width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
+                    {cartItems.length}
+                  </span>
+                )}
+              </Link>
               <Wallet />
               <Link to="/profile" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }} className="profile-link">
                 <div className="navbar-avatar" style={{ cursor: "pointer", transition: "transform 0.2s", overflow: "hidden" }} onMouseOver={e => e.currentTarget.style.transform = "scale(1.05)"} onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}>

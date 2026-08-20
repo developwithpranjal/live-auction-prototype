@@ -40,6 +40,7 @@ export const signup = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        wishlist: user.wishlist,
       },
     });
   } catch (error) {
@@ -81,6 +82,7 @@ export const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        wishlist: user.wishlist,
       },
     });
   } catch (error) {
@@ -132,7 +134,8 @@ export const updateProfile = async (req, res) => {
       mobile: updatedUser.mobile,
       dob: updatedUser.dob,
       profilePicture: updatedUser.profilePicture,
-      addresses: updatedUser.addresses
+      addresses: updatedUser.addresses,
+      wishlist: updatedUser.wishlist,
     });
   } catch (error) {
     console.error("Update profile error:", error);
